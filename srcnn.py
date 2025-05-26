@@ -127,11 +127,11 @@ def evaluate(model, loader, device):
     return avg_loss, avg_psnr
     
 # Hyperparameters
-scale_factor = 4
+scale_factor = 2
 batch_size = 64
-lr = 1e-3
-patch_size = 256
-n_epochs = 10
+lr = 1e-4
+patch_size = 32
+n_epochs = 100
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 torch.manual_seed(0)
@@ -170,7 +170,7 @@ for epoch in range(n_epochs):
 
     if val_loss < best_val_loss:
         best_val_loss = val_loss
-        print("Found best model! Saving...")
+        print("\tFound best model! Saving...")
         torch.save(model.state_dict(), "best_model.pth")
         
 print("Finished training")
