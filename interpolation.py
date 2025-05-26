@@ -67,7 +67,7 @@ def keys_cubic_kernel(t, alpha=-0.5):
 
     return result
 
-def bicubic_interpolate(img, scale_factor=2.0, alpha=-0.5):
+def bicubic(img, scale_factor=2.0, alpha=-0.5):
     """
     Assumes `img` has shape (H, W) or (H, W, C).
     """
@@ -119,5 +119,5 @@ def rmse(original_img, recreated_img):
 def psnr(original_img, recreated_img, max_pixel_value=1.0):
     rmse_value = rmse(original_img, recreated_img)
     if rmse_value == 0:
-        rmse_value = float('inf')
+        rmse_value = float("inf")
     return 20 * np.log10(max_pixel_value / rmse_value)
