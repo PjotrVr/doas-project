@@ -127,3 +127,17 @@ class EDSR(nn.Module):
         x = self.tail(x)
         x = self.add_mean(x)
         return x
+    
+def save_model(model, path):
+    torch.save(model.state_dict(), path)
+
+def load_model(model, path, load_tail=True):
+    state_dict = torch.load(path)
+    model_dict = model.state_dict()
+
+    if not load_tail:
+        filtered_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("tail")}
+        model_dict.update(filtered_state_dict)
+        model.load_state_dict(model_dict)
+    else:
+        model.load_state_dict(state_dict)
