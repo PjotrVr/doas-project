@@ -48,7 +48,8 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
     parser.add_argument("--patch_size", type=int, default=48, help="Low resolution patch size")
-    parser.add_argument("--val_every", type=int, default=1, help="Validate every N epochs")
+    # TODO: Enable this parameter
+    parser.add_argument("--val_freq", type=int, default=1, help="Validate every N epochs")
     
     # Reproducibility and system
     parser.add_argument("--save_best", action="store_true", help="Save best model based on validation loss")
