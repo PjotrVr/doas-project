@@ -18,6 +18,7 @@ from .train import evaluate
 def parse_args():
     # TODO: Add datasets: Set5, Set14 and Urban100
     parser = argparse.ArgumentParser(description="EDSR Evaluation")
+    
     # Loading model
     parser.add_argument("--checkpoint", type=str, required=True, help="Path to model checkpoint")
     parser.add_argument("--config", type=str, required=True, help="Path to config.json used during training")

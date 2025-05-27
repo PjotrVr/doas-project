@@ -2,7 +2,10 @@ import argparse
 import os
 import sys
 import json
+from time import time
+
 from PIL import Image
+
 import torch
 import torchvision.transforms.functional as TF
 
@@ -14,6 +17,7 @@ from models.utils import seed_everything
 
 def parse_args():
     parser = argparse.ArgumentParser(description="EDSR Inference - Upscale image")
+    
     # Loading model
     parser.add_argument("--checkpoint", type=str, required=True, help="Path to model checkpoint")
     parser.add_argument("--config", type=str, required=True, help="Path to config.json")
@@ -56,9 +60,11 @@ def main():
 
     image = Image.open(args.image).convert("RGB")
     lr = TF.to_tensor(image).unsqueeze(0).to(args.device)
-
+    start_time = time()
     with torch.no_grad():
         sr = model(lr).clamp(0.0, 1.0)
+    end_time = time()
+    elapsed = end_time - start_time
 
     sr_image = TF.to_pil_image(sr.squeeze(0).cpu())
 
@@ -68,6 +74,7 @@ def main():
 
     sr_image.save(args.out_path)
     print(f"Upscaled image saved to {args.out_path}")
+    print(f"Time taken: {elapsed:.3f}s")
 
 if __name__ == "__main__":
     main()
