@@ -70,10 +70,10 @@ def load_DIV2K_dataset(data_dir="./data", scale_factor=2, patch_size=48, transfo
     hr_val_img_files = sorted([os.path.join(val_hr_dir, f) for f in os.listdir(val_hr_dir) if f.endswith(("png", "jpg"))])
     lr_val_img_files = sorted([os.path.join(val_lr_dir, f) for f in os.listdir(val_lr_dir) if f.endswith(("png", "jpg"))])
 
-    hr_train_img_files = hr_train_img_files[:200]
-    lr_train_img_files = lr_train_img_files[:200]
-    hr_val_img_files = hr_val_img_files[:10]
-    lr_val_img_files = lr_val_img_files[:10]
+    # hr_train_img_files = hr_train_img_files
+    # lr_train_img_files = lr_train_img_files
+    # hr_val_img_files = hr_val_img_files[:20]
+    # lr_val_img_files = lr_val_img_files[:20]
     
     train_dataset = SRDataset(lr_train_img_files, hr_train_img_files, patch_size=patch_size, scale_factor=scale_factor, mode=mode, transform=transform)
     val_dataset = SRDataset(lr_val_img_files, hr_val_img_files, patch_size=patch_size, scale_factor=scale_factor, mode=mode, transform=None)
@@ -91,8 +91,8 @@ class PairedRandomTransform:
         if self.rot:
             k = random.randint(0, 3)
             if k:
-                lr = TF.rotate(lr, angle=90 * k)
-                hr = TF.rotate(hr, angle=90 * k)
+                lr = TF.rotate(lr, angle=90*k)
+                hr = TF.rotate(hr, angle=90*k)
         lr = TF.to_tensor(lr)
         hr = TF.to_tensor(hr)
         return lr, hr
