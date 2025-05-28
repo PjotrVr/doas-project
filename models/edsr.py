@@ -32,7 +32,7 @@ class MeanShift(nn.Conv2d):
             p.requires_grad = False # Frozen
 
 class ResBlock(nn.Module):
-    def __init__(self, kernel_size, n_features, bias=True, residual_scaling=1.0, activation="relu"):
+    def __init__(self, kernel_size, n_features, bias=True, res_scale=1.0, activation="relu"):
         super().__init__()
         padding = kernel_size // 2
         activation = activation.lower() if activation is not None else None
@@ -44,10 +44,10 @@ class ResBlock(nn.Module):
             layers.append(nn.PReLU(n_features))
         layers.append(nn.Conv2d(n_features, n_features, kernel_size, bias=bias, padding=padding))
         self.net = nn.Sequential(*layers)
-        self.residual_scaling = residual_scaling
+        self.res_scale = res_scale
 
     def forward(self, x):
-        return x + self.residual_scaling * self.net(x)
+        return x + self.res_scale * self.net(x)
 
 class Upsampler(nn.Module):
     def __init__(self, scale_factor, n_features, bias=True, activation=None):
@@ -84,7 +84,7 @@ class Upsampler(nn.Module):
         return self.net(x)
 
 class EDSR(nn.Module):
-    def __init__(self, in_channels, n_blocks, n_features, scale_factor, activation="relu", residual_scaling=1.0):
+    def __init__(self, in_channels, n_blocks, n_features, scale_factor, activation="relu", res_scale=1.0):
         super().__init__()
         self.scale_factor = scale_factor
         activation = activation.lower() if activation is not None else None
@@ -95,7 +95,7 @@ class EDSR(nn.Module):
         head_layers.append(nn.Conv2d(in_channels, n_features, kernel_size=3, padding=1))
 
         for i in range(n_blocks):
-            body_layers.append(ResBlock(3, n_features, activation=activation, residual_scaling=residual_scaling))
+            body_layers.append(ResBlock(3, n_features, activation=activation, res_scale=res_scale))
         body_layers.append(nn.Conv2d(n_features, n_features, kernel_size=3, padding=1))
 
         tail_layers.append(Upsampler(scale_factor, n_features))
@@ -116,8 +116,8 @@ class EDSR(nn.Module):
 def save_model(model, path):
     torch.save(model.state_dict(), path)
 
-def load_model(model, path, load_tail=True):
-    state_dict = torch.load(path)
+def load_model(model, path, load_tail=True, device=torch.device("cpu")):
+    state_dict = torch.load(path, map_location=device)
     model_dict = model.state_dict()
 
     if not load_tail:

@@ -25,6 +25,7 @@ def parse_args():
     
     # Evaluation
     parser.add_argument("--batch", type=int, default=16, help="Batch size for evaluation")
+    parser.add_argument("--data_dir", type=str, default="data", help="Path to DIV2K data directory")
     
     # Reproducibility
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to use")
@@ -49,11 +50,14 @@ def main():
     args = parse_args()
     seed_everything(args.seed)
 
+    with open(args.config, "r") as f:
+        config = json.load(f)
+
     print("Loading dataset...")
     train_dataset, val_dataset = load_DIV2K_dataset(
         args.data_dir,
-        scale_factor=args.scale,
-        patch_size=args.patch_size,
+        scale_factor=config["scale"],
+        patch_size=config["patch_size"],
         transform=None
     )
     train_loader = data.DataLoader(train_dataset, batch_size=args.batch, shuffle=False)
@@ -62,15 +66,15 @@ def main():
     print("Building model...")
     model = EDSR(
         in_channels=3,
-        n_blocks=args.n_blocks,
-        n_features=args.n_features,
-        scale_factor=args.scale,
-        activation=args.activation,
-        residual_scaling=args.res_scale,
+        n_blocks=config["n_blocks"],
+        n_features=config["n_features"],
+        scale_factor=config["scale"],
+        activation=config["activation"],
+        res_scale=config["res_scale"],
     ).to(args.device)
 
     print(f"Loading checkpoint from {args.checkpoint}")
-    load_model(model, args.checkpoint, load_tail=True)
+    load_model(model, args.checkpoint, load_tail=True, device=torch.device(args.device))
 
     print(f"Running evaluation on {args.device}...")
     train_loss, train_psnr, train_ssim_val = evaluate(model, criterion, train_loader, args.device)

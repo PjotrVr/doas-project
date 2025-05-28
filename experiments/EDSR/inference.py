@@ -24,7 +24,7 @@ def parse_args():
     
     # Upscaling image
     parser.add_argument("--image", type=str, required=True, help="Path to input image")
-    parser.add_argument("--out_path", type=str, default=None, help="Path to save upscaled image")
+    parser.add_argument("--out", type=str, default=None, help="Path to save upscaled image")
     
     # Reproducibility
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to use")
@@ -45,17 +45,16 @@ def main():
     with open(args.config, "r") as f:
         config = json.load(f)
 
-    scale = config["scale"]
     model = EDSR(
         in_channels=3,
         n_blocks=config["n_blocks"],
         n_features=config["n_features"],
-        scale_factor=scale,
-        activation=config.get("activation", "relu"),
-        residual_scaling=config.get("res_scale", 1.0),
+        scale_factor=config["scale"],
+        activation=config["activation"],
+        res_scale=config["res_scale"],
     ).to(args.device)
 
-    load_model(model, args.checkpoint, load_tail=True)
+    load_model(model, args.checkpoint, load_tail=True, device=torch.device(args.device))
     model.eval()
 
     image = Image.open(args.image).convert("RGB")
@@ -68,12 +67,12 @@ def main():
 
     sr_image = TF.to_pil_image(sr.squeeze(0).cpu())
 
-    if args.out_path is None:
+    if args.out is None:
         base, ext = os.path.splitext(args.image)
-        args.out_path = f"{base}_{scale}x_upscaled{ext}"
+        args.out = f"{base}_{config["scale"]}x_upscaled{ext}"
 
-    sr_image.save(args.out_path)
-    print(f"Upscaled image saved to {args.out_path}")
+    sr_image.save(args.out)
+    print(f"Upscaled image saved to {args.out}")
     print(f"Time taken: {elapsed:.3f}s")
 
 if __name__ == "__main__":

@@ -133,7 +133,7 @@ def main():
         n_features=args.n_features,
         scale_factor=args.scale,
         activation=args.activation,
-        residual_scaling=args.res_scale,
+        res_scale=args.res_scale,
     ).to(args.device)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -168,10 +168,10 @@ def main():
 
     if args.resume:
         print(f"Resuming training from {args.resume}...")
-        load_model(model, args.resume, load_tail=True)
+        load_model(model, args.checkpoint, load_tail=True, device=torch.device(args.device))
     elif args.pretrain:
         print(f"Loading pretrained model from {args.pretrain} (load_tail={args.load_tail})...")
-        load_model(model, args.pretrain, load_tail=args.load_tail)
+        load_model(model, args.checkpoint, load_tail=True, device=torch.device(args.device))
     
     print(f"Starting training on {args.device}...")
 
