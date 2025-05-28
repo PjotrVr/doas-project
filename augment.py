@@ -60,20 +60,22 @@ def augment_dir(data_dir, output_dir, n_augmentations=5, lr_patch_size=48, scale
     os.makedirs(f"{output_dir}/X{scale_factor}/HR", exist_ok=True)
     
     for i in range(len(lr_files)):
-        print(f"Augmenting image {i+1}...")
-        augment_img(os.path.join(f"{data_dir}/X{scale_factor}/LR", lr_files[i]),
-                    os.path.join(f"{data_dir}/X{scale_factor}/HR", hr_files[i]),
-                    output_dir,
-                    n_augmentations=n_augmentations, 
-                    lr_patch_size=lr_patch_size, 
-                    scale_factor=scale_factor)
+        print(f"Augmenting image {i + 1}...")
+        augment_img(
+            os.path.join(f"{data_dir}/X{scale_factor}/LR", lr_files[i]),
+            os.path.join(f"{data_dir}/X{scale_factor}/HR", hr_files[i]),
+            output_dir,
+            n_augmentations=n_augmentations, 
+            lr_patch_size=lr_patch_size, 
+            scale_factor=scale_factor
+        )
 
 if __name__ == "__main__":
-    random.seed(0)
-    dataset = "DIV2K_train"
-    augment_dir(
-        data_dir=f"./data/{dataset}",
-        output_dir=f"./data-augmented/{dataset}",
-        n_augmentations=20,
-        scale_factor=2
-    )
+    for dataset in ["DIV2K-train", "DIV2K-val", "Urban100", "Set5", "Set14", "BSD100"]:
+        random.seed(0)
+        augment_dir(
+            data_dir=f"./data/{dataset}",
+            output_dir=f"./data-augmented/{dataset}",
+            n_augmentations=20,
+            scale_factor=2
+        )

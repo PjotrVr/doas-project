@@ -14,6 +14,7 @@ sys.path.append(project_root)
 
 from models.edsr import EDSR, load_model
 from models.utils import seed_everything
+from models.ensemble import forward_x8
 
 def parse_args():
     parser = argparse.ArgumentParser(description="EDSR Inference - Upscale image")
@@ -23,8 +24,9 @@ def parse_args():
     parser.add_argument("--config", type=str, required=True, help="Path to config.json")
     
     # Upscaling image
-    parser.add_argument("--image", type=str, required=True, help="Path to input image")
+    parser.add_argument("--img", type=str, required=True, help="Path to input image")
     parser.add_argument("--out", type=str, default=None, help="Path to save upscaled image")
+    parser.add_argument("--use_ensemble", action="store_true", help="Use ensemble (often leads to higher accuracy)")
     
     # Reproducibility
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to use")
@@ -57,21 +59,26 @@ def main():
     load_model(model, args.checkpoint, load_tail=True, device=torch.device(args.device))
     model.eval()
 
-    image = Image.open(args.image).convert("RGB")
-    lr = TF.to_tensor(image).unsqueeze(0).to(args.device)
+    img = Image.open(args.img).convert("RGB")
+    lr = TF.to_tensor(img).unsqueeze(0).to(args.device)
     start_time = time()
     with torch.no_grad():
-        sr = model(lr).clamp(0.0, 1.0)
+        if args.use_ensemble:
+            sr = forward_x8(model, lr)
+        else:
+            sr = model(lr)
+    
+        sr = sr.clamp(0.0, 1.0)
     end_time = time()
     elapsed = end_time - start_time
 
-    sr_image = TF.to_pil_image(sr.squeeze(0).cpu())
+    sr_img = TF.to_pil_image(sr.squeeze(0).cpu())
 
     if args.out is None:
-        base, ext = os.path.splitext(args.image)
+        base, ext = os.path.splitext(args.img)
         args.out = f"{base}_{config['scale']}x_upscaled{ext}"
 
-    sr_image.save(args.out)
+    sr_img.save(args.out)
     print(f"Upscaled image saved to {args.out}")
     print(f"Time taken: {elapsed:.3f}s")
 

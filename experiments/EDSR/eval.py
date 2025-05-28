@@ -19,7 +19,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="EDSR Evaluation")
     
     # Dataset
-    parser.add_argument("--data_dir", type=str, default="DIV2K_val", help="Path to data directory")
+    parser.add_argument("--data_dir", type=str, default="DIV2K-val", help="Path to data directory")
     
     # Loading model
     parser.add_argument("--checkpoint", type=str, required=True, help="Path to model checkpoint")
@@ -27,8 +27,9 @@ def parse_args():
     
     # Evaluation
     parser.add_argument("--batch", type=int, default=16, help="Batch size for evaluation")
+    parser.add_argument("--use_ensemble", action="store_true", help="Use ensemble (often leads to higher accuracy)")
     
-    # Reproducibilityw
+    # Reproducibility
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to use")
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
     args = parser.parse_args()
@@ -55,9 +56,8 @@ def main():
         config = json.load(f)
 
     print("Loading dataset...")
-    dataset = load_dataset(args.data_dir, scale_factor=config["scale"], patch_size=None, transform=None)
+    dataset = load_dataset(args.data_dir, scale_factor=config["scale"])
     
-
     print("Building model...")
     model = EDSR(
         in_channels=3,
@@ -72,8 +72,8 @@ def main():
     load_model(model, args.checkpoint, load_tail=True, device=torch.device(args.device))
 
     print(f"Running evaluation on {args.device}...")
+    loss, psnr, ssim_val = evaluate(model, criterion, dataset, args.device, ensemble=args.use_ensemble)
 
-    loss, psnr, ssim_val = evaluate(model, criterion, dataset, args.device)
     print(f"Loss={loss:.4f}, PSNR={psnr:.3f}dB, SSIM={ssim_val:.5f}")
     
 if __name__ == "__main__":

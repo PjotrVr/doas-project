@@ -28,13 +28,14 @@ sys.path.append(project_root)
 from .dataset import load_dataset, PairedRandomTransform
 from models.edsr import EDSR, save_model, load_model
 from models.utils import calculate_mean, calculate_psnr, seed_everything
+from models.ensemble import forward_x8
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="EDSR Training on DIV2K")
+    parser = argparse.ArgumentParser(description="EDSR Training")
 
     # Directories
-    parser.add_argument("--train_dir", type=str, default="./data/DIV2K_train", help="Path to train data directory")
-    parser.add_argument("--val_dir", type=str, default="./data/DIV2K_val", help="Path to validation data directory")
+    parser.add_argument("--train_dir", type=str, default="./data/DIV2K-train", help="Path to train data directory")
+    parser.add_argument("--val_dir", type=str, default="./data/DIV2K-val", help="Path to validation data directory")
     parser.add_argument("--run_dir", type=str, default="runs", help="Directory to save logs/models")
     
     # Model parameters
@@ -48,8 +49,6 @@ def parse_args():
     parser.add_argument("--batch", type=int, default=16, help="Batch size")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
-    parser.add_argument("--patch_size", type=int, default=48, help="Low resolution patch size")
-    # TODO: Enable this parameter
     parser.add_argument("--val_freq", type=int, default=1, help="Validate every N epochs")
     
     # Reproducibility and system
@@ -94,7 +93,7 @@ def train_one_epoch(model, criterion, optimizer, loader, device):
     avg_ssim = total_ssim / len(loader)
     return avg_loss, avg_psnr, avg_ssim
 
-def evaluate(model, criterion, dataset, device):
+def evaluate(model, criterion, dataset, device, ensemble=False):
     model.eval()
     total_loss, total_psnr, total_ssim = 0.0, 0.0, 0.0
     with torch.no_grad():
@@ -103,9 +102,12 @@ def evaluate(model, criterion, dataset, device):
             lr_img = lr_img.unsqueeze(0).to(device)  # Add batch dim
             hr_img = hr_img.unsqueeze(0).to(device)
 
-            sr_img = model(lr_img)
+            if ensemble:
+                sr_img = forward_x8(model, lr_img)
+            else:
+                sr_img = model(lr_img)
+            
             sr_img = torch.clamp(sr_img, 0.0, 1.0)
-
             loss = criterion(sr_img, hr_img)
 
             total_loss += loss.item()
@@ -119,12 +121,11 @@ def evaluate(model, criterion, dataset, device):
     return avg_loss, avg_psnr, avg_ssim
 
 def main():
-    transform = PairedRandomTransform(hflip=True, rot=True)
-    criterion = nn.L1Loss()    
+    # transform = PairedRandomTransform(hflip=True, rot=True)
     args = parse_args()
 
-    train_dataset = load_dataset(args.train_dir, scale_factor=args.scale, patch_size=args.patch_size, transform=transform)
-    val_dataset = load_dataset(args.val_dir, scale_factor=args.scale, patch_size=args.patch_size, transform=transform)
+    train_dataset = load_dataset(args.train_dir, scale_factor=args.scale)
+    val_dataset = load_dataset(args.val_dir, scale_factor=args.scale)
     train_loader = data.DataLoader(train_dataset, batch_size=args.batch, shuffle=True)
     # val_loader = data.DataLoader(val_dataset, batch_size=args.batch, shuffle=False)
     
@@ -139,6 +140,7 @@ def main():
     ).to(args.device)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    criterion = nn.L1Loss()
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         mode="min",
@@ -166,7 +168,7 @@ def main():
     print("Number of parameters:")
     print(f"\tLearnable: {n_learnable_params:,}" )
     print(f"\tFrozen: {n_frozen_params:,}" )
-    print(f"\tTotal: {n_learnable_params+n_frozen_params:,}" )
+    print(f"\tTotal: {n_learnable_params + n_frozen_params:,}" )
 
     if args.resume:
         print(f"Resuming training from {args.resume}...")
@@ -186,31 +188,37 @@ def main():
         "val_loss": [],
         "val_psnr": [],
         "val_ssim": [],
+        "val_epochs": []
     }
 
     for epoch in range(args.epochs):
         train_loss, train_psnr, train_ssim = train_one_epoch(model, criterion, optimizer, train_loader, args.device)
-        val_loss, val_psnr, val_ssim = evaluate(model, criterion, val_dataset, args.device)
-        scheduler.step(val_loss)
-
         history["train_loss"].append(train_loss)
         history["train_psnr"].append(train_psnr)
         history["train_ssim"].append(train_ssim)
-        history["val_loss"].append(val_loss)
-        history["val_psnr"].append(val_psnr)
-        history["val_ssim"].append(val_ssim)
-
-        print(f"Epoch {epoch+1}/{args.epochs}:")
+        print(f"Epoch {epoch + 1}/{args.epochs}:")
         print(f"\tTrain: Loss={train_loss:.4f}, PSNR={train_psnr:.3f}dB, SSIM={train_ssim:.5f}")
-        print(f"\tVal: Loss={val_loss:.4f}, PSNR={val_psnr:.3f}dB, SSIM={val_ssim:.5f}")
 
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            print("\tFound best model! Saving...")
-            save_model(model, os.path.join(checkpoints_dir, "best.pt"))
+        if epoch % args.val_freq == 0 or (epoch + 1) == args.epochs:
+            val_loss, val_psnr, val_ssim = evaluate(model, criterion, val_dataset, args.device)
+            scheduler.step(val_loss)
+            history["val_loss"].append(val_loss)
+            history["val_psnr"].append(val_psnr)
+            history["val_ssim"].append(val_ssim)
+            history["val_epochs"].append(epoch)
+
+            print(f"\tVal: Loss={val_loss:.4f}, PSNR={val_psnr:.3f}dB, SSIM={val_ssim:.5f}")
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                print("\tFound best model! Saving...")
+                save_model(model, os.path.join(checkpoints_dir, "best.pt"))
             
         save_model(model, os.path.join(checkpoints_dir, f"epoch={epoch}.pt"))
     
+    # Save all metrics in case we need it for later analysis
+    with open(os.path.join(run_dir, "history.json"), "w") as f:
+        json.dump(history, f, indent=4)
+
     print(f"Finished training")
 
 if __name__ == "__main__":
