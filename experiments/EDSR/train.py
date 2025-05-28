@@ -43,7 +43,7 @@ def parse_args():
     parser.add_argument("--n_blocks", type=int, default=16, help="Number of residual blocks")
     parser.add_argument("--n_features", type=int, default=64, help="Number of feature maps in the model")
     parser.add_argument("--res_scale", type=float, default=1.0, help="Residual scaling factor")
-    parser.add_argument("--activation", type=str, choices=["relu", "prelu"], default="relu", help="Activation function")
+    parser.add_argument("--act", type=str, choices=["relu", "prelu"], default="relu", help="Activation function")
     
     # Training parameters
     parser.add_argument("--batch", type=int, default=16, help="Batch size")
@@ -52,7 +52,6 @@ def parse_args():
     parser.add_argument("--val_freq", type=int, default=1, help="Validate every N epochs")
     
     # Reproducibility and system
-    parser.add_argument("--save_best", action="store_true", help="Save best model based on validation loss")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to use")
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
 
@@ -135,7 +134,7 @@ def main():
         n_blocks=args.n_blocks,
         n_features=args.n_features,
         scale_factor=args.scale,
-        activation=args.activation,
+        activation=args.act,
         res_scale=args.res_scale,
     ).to(args.device)
 
