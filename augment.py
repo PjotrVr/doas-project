@@ -14,8 +14,8 @@ def random_crop(lr_img, hr_img, lr_patch_size=48, scale_factor=2):
     hr_patch_size = lr_patch_size * scale_factor
     h, w = lr_img.shape[1:3]
 
-    lr_width = random.randint(0, w - lr_patch_size + 1)
-    lr_height = random.randint(0, h - lr_patch_size + 1)
+    lr_width = random.randint(0, w - lr_patch_size)
+    lr_height = random.randint(0, h - lr_patch_size)
     hr_width = lr_width * scale_factor
     hr_height = lr_height * scale_factor
 
@@ -71,11 +71,12 @@ def augment_dir(data_dir, output_dir, n_augmentations=5, lr_patch_size=48, scale
         )
 
 if __name__ == "__main__":
-    for dataset in ["DIV2K-train", "DIV2K-val", "Urban100", "Set5", "Set14", "BSD100"]:
-        random.seed(0)
-        augment_dir(
-            data_dir=f"./data/{dataset}",
-            output_dir=f"./data-augmented/{dataset}",
-            n_augmentations=20,
-            scale_factor=2
-        )
+    for dataset in ["Urban100", "Set5", "Set14", "BSD100", "DIV2K-val", "DIV2K-train"]:
+        for scale_factor in [2, 3, 4]:
+            random.seed(0)
+            augment_dir(
+                data_dir=f"./data/{dataset}",
+                output_dir=f"./data-augmented/{dataset}",
+                n_augmentations=10,
+                scale_factor=scale_factor
+            )
