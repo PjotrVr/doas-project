@@ -94,30 +94,6 @@ def train_one_epoch(model, criterion, optimizer, loader, device):
     avg_ssim = total_ssim / len(loader)
     return avg_loss, avg_psnr, avg_ssim
 
-# def evaluate(model, criterion, loader, device):
-#     model.eval()
-#     total_loss, total_psnr, total_ssim = 0.0, 0.0, 0.0
-#     # total_samples = 0
-#     with torch.no_grad():
-#         for lr_batch, hr_batch in loader:
-#             lr_batch, hr_batch = lr_batch.to(device), hr_batch.to(device)
-#             sr_batch = model(lr_batch)
-#             sr_batch = torch.clamp(sr_batch, 0.0, 1.0)
-
-#             loss = criterion(sr_batch, hr_batch)
-
-#             total_loss += loss.item()
-#             total_psnr += calculate_psnr(sr_batch, hr_batch, model.scale_factor).item()
-#             total_ssim += ssim(sr_batch, hr_batch, data_range=1.0).item()
-#             # total_samples += lr_batch.shape[0]
-
-#     model.train()
-
-#     avg_loss = total_loss / len(loader)
-#     avg_psnr = total_psnr / len(loader)
-#     avg_ssim = total_ssim / len(loader)
-#     return avg_loss, avg_psnr, avg_ssim
-
 def evaluate(model, criterion, dataset, device):
     model.eval()
     total_loss, total_psnr, total_ssim = 0.0, 0.0, 0.0
