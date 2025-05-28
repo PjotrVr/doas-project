@@ -40,6 +40,9 @@ class SRDataset(data.Dataset):
         if self.mode == "ycbcr":
             lr_img = lr_img.convert("YCbCr")
             hr_img = hr_img.convert("YCbCr")
+        elif self.mode == "rgb":
+            lr_img = lr_img.convert("RGB")
+            hr_img = hr_img.convert("RGB")
 
         if self.patch_size:
             hr_patch_size = self.patch_size * self.scale_factor
@@ -70,6 +73,7 @@ def load_DIV2K_dataset(data_dir="./data", scale_factor=2, patch_size=48, transfo
     hr_val_img_files = sorted([os.path.join(val_hr_dir, f) for f in os.listdir(val_hr_dir) if f.endswith(("png", "jpg"))])
     lr_val_img_files = sorted([os.path.join(val_lr_dir, f) for f in os.listdir(val_lr_dir) if f.endswith(("png", "jpg"))])
 
+    # Subset
     # hr_train_img_files = hr_train_img_files
     # lr_train_img_files = lr_train_img_files
     # hr_val_img_files = hr_val_img_files[:20]
@@ -78,6 +82,18 @@ def load_DIV2K_dataset(data_dir="./data", scale_factor=2, patch_size=48, transfo
     train_dataset = SRDataset(lr_train_img_files, hr_train_img_files, patch_size=patch_size, scale_factor=scale_factor, mode=mode, transform=transform)
     val_dataset = SRDataset(lr_val_img_files, hr_val_img_files, patch_size=patch_size, scale_factor=scale_factor, mode=mode, transform=None)
     return train_dataset, val_dataset
+
+def load_eval_dataset(data_dir="./data", scale_factor=2, patch_size=None, transform=None, mode="rgb"):
+    dir = os.path.join(data_dir, f"X{scale_factor}")
+    hr_img_files = sorted([os.path.join(dir, f) for f in os.listdir(dir) if f.endswith(("png", "jpg")) and "HR" in f])
+    lr_img_files = sorted([os.path.join(dir, f) for f in os.listdir(dir) if f.endswith(("png", "jpg")) and "LR" in f])
+
+    # Subset
+    # hr_img_files = hr_img_files[:10]
+    # lr_img_files = lr_img_files[:10]
+    
+    dataset = SRDataset(lr_img_files, hr_img_files, patch_size=patch_size, scale_factor=scale_factor, mode=mode, transform=transform)
+    return dataset
 
 class PairedRandomTransform:
     def __init__(self, hflip=True, rot=True):
