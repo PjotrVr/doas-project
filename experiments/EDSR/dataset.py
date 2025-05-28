@@ -62,35 +62,16 @@ class SRDataset(data.Dataset):
             hr_img = TF.to_tensor(hr_img)
         return lr_img, hr_img
 
-def load_DIV2K_dataset(data_dir="./data", scale_factor=2, patch_size=48, transform=None, mode="rgb"):
-    train_hr_dir = os.path.join(data_dir, "DIV2K_train_HR")
-    train_lr_dir = os.path.join(data_dir, f"DIV2K_train_LR_bicubic/X{scale_factor}")
-    val_hr_dir = os.path.join(data_dir, "DIV2K_valid_HR")
-    val_lr_dir = os.path.join(data_dir, f"DIV2K_valid_LR_bicubic/X{scale_factor}")
-
-    hr_train_img_files = sorted([os.path.join(train_hr_dir, f) for f in os.listdir(train_hr_dir) if f.endswith(("png", "jpg"))])
-    lr_train_img_files = sorted([os.path.join(train_lr_dir, f) for f in os.listdir(train_lr_dir) if f.endswith(("png", "jpg"))])
-    hr_val_img_files = sorted([os.path.join(val_hr_dir, f) for f in os.listdir(val_hr_dir) if f.endswith(("png", "jpg"))])
-    lr_val_img_files = sorted([os.path.join(val_lr_dir, f) for f in os.listdir(val_lr_dir) if f.endswith(("png", "jpg"))])
-
-    # Subset
-    # hr_train_img_files = hr_train_img_files
-    # lr_train_img_files = lr_train_img_files
-    # hr_val_img_files = hr_val_img_files[:20]
-    # lr_val_img_files = lr_val_img_files[:20]
+def load_dataset(root_dir="./data", scale_factor=2, patch_size=48, transform=None, mode="rgb"):
+    lr_dir = os.path.join(root_dir, f"X{scale_factor}/LR")
+    hr_dir = os.path.join(root_dir, f"X{scale_factor}/HR")
     
-    train_dataset = SRDataset(lr_train_img_files, hr_train_img_files, patch_size=patch_size, scale_factor=scale_factor, mode=mode, transform=transform)
-    val_dataset = SRDataset(lr_val_img_files, hr_val_img_files, patch_size=patch_size, scale_factor=scale_factor, mode=mode, transform=None)
-    return train_dataset, val_dataset
-
-def load_eval_dataset(data_dir="./data", scale_factor=2, patch_size=None, transform=None, mode="rgb"):
-    dir = os.path.join(data_dir, f"X{scale_factor}")
-    hr_img_files = sorted([os.path.join(dir, f) for f in os.listdir(dir) if f.endswith(("png", "jpg")) and "HR" in f])
-    lr_img_files = sorted([os.path.join(dir, f) for f in os.listdir(dir) if f.endswith(("png", "jpg")) and "LR" in f])
-
+    lr_img_files = sorted([os.path.join(lr_dir, f) for f in os.listdir(lr_dir) if f.endswith(("png", "jpg"))])
+    hr_img_files = sorted([os.path.join(hr_dir, f) for f in os.listdir(hr_dir) if f.endswith(("png", "jpg"))])
+    
     # Subset
-    # hr_img_files = hr_img_files[:10]
     # lr_img_files = lr_img_files[:10]
+    # hr_img_files = hr_img_files[:10]
     
     dataset = SRDataset(lr_img_files, hr_img_files, patch_size=patch_size, scale_factor=scale_factor, mode=mode, transform=transform)
     return dataset

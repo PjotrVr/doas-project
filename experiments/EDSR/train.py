@@ -25,7 +25,7 @@ from torchmetrics.functional.image.ssim import structural_similarity_index_measu
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
 
-from .dataset import load_DIV2K_dataset, PairedRandomTransform
+from .dataset import load_dataset, PairedRandomTransform
 from models.edsr import EDSR, save_model, load_model
 from models.utils import calculate_mean, calculate_psnr, seed_everything
 
@@ -33,7 +33,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="EDSR Training on DIV2K")
 
     # Directories
-    parser.add_argument("--data_dir", type=str, default="data", help="Path to DIV2K data directory")
+    parser.add_argument("--train_dir", type=str, default="./data/DIV2K_train", help="Path to train data directory")
+    parser.add_argument("--val_dir", type=str, default="./data/DIV2K_val", help="Path to validation data directory")
     parser.add_argument("--run_dir", type=str, default="runs", help="Directory to save logs/models")
     
     # Model parameters
@@ -146,7 +147,8 @@ def main():
     criterion = nn.L1Loss()    
     args = parse_args()
 
-    train_dataset, val_dataset = load_DIV2K_dataset(args.data_dir, scale_factor=args.scale, patch_size=args.patch_size, transform=transform)
+    train_dataset = load_dataset(args.train_dir, scale_factor=args.scale, patch_size=args.patch_size, transform=transform)
+    val_dataset = load_dataset(args.val_dir, scale_factor=args.scale, patch_size=args.patch_size, transform=transform)
     train_loader = data.DataLoader(train_dataset, batch_size=args.batch, shuffle=True)
     # val_loader = data.DataLoader(val_dataset, batch_size=args.batch, shuffle=False)
     

@@ -12,14 +12,14 @@ sys.path.append(project_root)
 
 from models.edsr import EDSR, load_model
 from models.utils import seed_everything
-from .dataset import load_DIV2K_dataset, load_eval_dataset
+from .dataset import load_dataset
 from .train import evaluate
 
 def parse_args():
     parser = argparse.ArgumentParser(description="EDSR Evaluation")
     
     # Dataset
-    parser.add_argument("--data", type=str, default="DIV2K", choices=["DIV2K", "BSD100", "Set5", "Set14", "Urban100"])
+    parser.add_argument("--data_dir", type=str, default="DIV2K_val", help="Path to data directory")
     
     # Loading model
     parser.add_argument("--checkpoint", type=str, required=True, help="Path to model checkpoint")
@@ -27,9 +27,8 @@ def parse_args():
     
     # Evaluation
     parser.add_argument("--batch", type=int, default=16, help="Batch size for evaluation")
-    parser.add_argument("--data_dir", type=str, default="data", help="Path to data directory")
     
-    # Reproducibility
+    # Reproducibilityw
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to use")
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
     args = parser.parse_args()
@@ -56,18 +55,8 @@ def main():
         config = json.load(f)
 
     print("Loading dataset...")
-    if args.data == "DIV2K":
-        train_dataset, val_dataset = load_DIV2K_dataset(
-            args.data_dir,
-            scale_factor=config["scale"],
-            patch_size=config["patch_size"],
-            transform=None
-        )
-    else:
-        train_dataset = None
-        val_dataset = load_eval_dataset(os.path.join(args.data_dir, args.data), scale_factor=config["scale"])
-    # train_loader = data.DataLoader(train_dataset, batch_size=args.batch, shuffle=False)
-    # val_loader = data.DataLoader(val_dataset, batch_size=args.batch, shuffle=False)
+    dataset = load_dataset(args.data_dir, scale_factor=config["scale"], patch_size=None, transform=None)
+    
 
     print("Building model...")
     model = EDSR(
@@ -83,18 +72,9 @@ def main():
     load_model(model, args.checkpoint, load_tail=True, device=torch.device(args.device))
 
     print(f"Running evaluation on {args.device}...")
-    # train_loss, train_psnr, train_ssim_val = evaluate(model, criterion, train_loader, args.device)
-    if train_dataset:
-        train_loss, train_psnr, train_ssim_val = evaluate(model, criterion, train_dataset, args.device)
-    # val_loss, val_psnr, val_ssim_val = evaluate(model, criterion, val_loader, args.device)
-    val_loss, val_psnr, val_ssim_val = evaluate(model, criterion, val_dataset, args.device)
-    
-    print(f"Results:")
-    if train_dataset:
-        print(f"\tTrain: Loss={train_loss:.4f}, PSNR={train_psnr:.3f}dB, SSIM={train_ssim_val:.5f}")
-    else:
-        print(f"\tTrain: Loss=-/-, PSNR=-/-dB, SSIM=-/-")
-    print(f"\tVal: Loss={val_loss:.4f}, PSNR={val_psnr:.3f}dB, SSIM={val_ssim_val:.5f}")
+
+    loss, psnr, ssim_val = evaluate(model, criterion, dataset, args.device)
+    print(f"Loss={loss:.4f}, PSNR={psnr:.3f}dB, SSIM={ssim_val:.5f}")
     
 if __name__ == "__main__":
     main()
