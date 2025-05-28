@@ -93,28 +93,52 @@ def train_one_epoch(model, criterion, optimizer, loader, device):
     avg_ssim = total_ssim / len(loader)
     return avg_loss, avg_psnr, avg_ssim
 
-def evaluate(model, criterion, loader, device):
+# def evaluate(model, criterion, loader, device):
+#     model.eval()
+#     total_loss, total_psnr, total_ssim = 0.0, 0.0, 0.0
+#     # total_samples = 0
+#     with torch.no_grad():
+#         for lr_batch, hr_batch in loader:
+#             lr_batch, hr_batch = lr_batch.to(device), hr_batch.to(device)
+#             sr_batch = model(lr_batch)
+#             sr_batch = torch.clamp(sr_batch, 0.0, 1.0)
+
+#             loss = criterion(sr_batch, hr_batch)
+
+#             total_loss += loss.item()
+#             total_psnr += calculate_psnr(sr_batch, hr_batch, model.scale_factor).item()
+#             total_ssim += ssim(sr_batch, hr_batch, data_range=1.0).item()
+#             # total_samples += lr_batch.shape[0]
+
+#     model.train()
+
+#     avg_loss = total_loss / len(loader)
+#     avg_psnr = total_psnr / len(loader)
+#     avg_ssim = total_ssim / len(loader)
+#     return avg_loss, avg_psnr, avg_ssim
+
+def evaluate(model, criterion, dataset, device):
     model.eval()
     total_loss, total_psnr, total_ssim = 0.0, 0.0, 0.0
-    # total_samples = 0
     with torch.no_grad():
-        for lr_batch, hr_batch in loader:
-            lr_batch, hr_batch = lr_batch.to(device), hr_batch.to(device)
-            sr_batch = model(lr_batch)
-            sr_batch = torch.clamp(sr_batch, 0.0, 1.0)
+        for i in range(len(dataset)):
+            lr_img, hr_img = dataset[i]
+            lr_img = lr_img.unsqueeze(0).to(device)  # Add batch dim
+            hr_img = hr_img.unsqueeze(0).to(device)
 
-            loss = criterion(sr_batch, hr_batch)
+            sr_img = model(lr_img)
+            sr_img = torch.clamp(sr_img, 0.0, 1.0)
+
+            loss = criterion(sr_img, hr_img)
 
             total_loss += loss.item()
-            total_psnr += calculate_psnr(sr_batch, hr_batch, model.scale_factor).item()
-            total_ssim += ssim(sr_batch, hr_batch, data_range=1.0).item()
-            # total_samples += lr_batch.shape[0]
+            total_psnr += calculate_psnr(sr_img, hr_img, model.scale_factor).item()
+            total_ssim += ssim(sr_img, hr_img, data_range=1.0).item()
 
+    avg_loss = total_loss / len(dataset)
+    avg_psnr = total_psnr / len(dataset)
+    avg_ssim = total_ssim / len(dataset)
     model.train()
-
-    avg_loss = total_loss / len(loader)
-    avg_psnr = total_psnr / len(loader)
-    avg_ssim = total_ssim / len(loader)
     return avg_loss, avg_psnr, avg_ssim
 
 def main():
@@ -124,8 +148,8 @@ def main():
 
     train_dataset, val_dataset = load_DIV2K_dataset(args.data_dir, scale_factor=args.scale, patch_size=args.patch_size, transform=transform)
     train_loader = data.DataLoader(train_dataset, batch_size=args.batch, shuffle=True)
-    val_loader = data.DataLoader(val_dataset, batch_size=args.batch, shuffle=False)
-
+    # val_loader = data.DataLoader(val_dataset, batch_size=args.batch, shuffle=False)
+    
     seed_everything(args.seed)
     model = EDSR(
         in_channels=3,
@@ -188,7 +212,7 @@ def main():
 
     for epoch in range(args.epochs):
         train_loss, train_psnr, train_ssim = train_one_epoch(model, criterion, optimizer, train_loader, args.device)
-        val_loss, val_psnr, val_ssim = evaluate(model, criterion, val_loader, args.device)
+        val_loss, val_psnr, val_ssim = evaluate(model, criterion, val_dataset, args.device)
         scheduler.step(val_loss)
 
         history["train_loss"].append(train_loss)

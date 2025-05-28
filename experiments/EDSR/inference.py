@@ -69,7 +69,7 @@ def main():
 
     if args.out is None:
         base, ext = os.path.splitext(args.image)
-        args.out = f"{base}_{config["scale"]}x_upscaled{ext}"
+        args.out = f"{base}_{config['scale']}x_upscaled{ext}"
 
     sr_image.save(args.out)
     print(f"Upscaled image saved to {args.out}")
