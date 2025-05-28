@@ -90,11 +90,13 @@ python inference.py EDSR \
 ## Citation To Original Authors
 
 ```
-@inproceedings{lim2017edsr,
-  ti
-tle={Enhanced Deep Residual Networks for Single Image Super-Resolution},
-  author={Lim, Bee and Son, Sanghyun and Kim, Heewon and Nah, Seungjun and Mu Lee, Kyoung},
-  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)},
-  year={2017}
+@misc{lim2017enhanceddeepresidualnetworks,
+      title={Enhanced Deep Residual Networks for Single Image Super-Resolution}, 
+      author={Bee Lim and Sanghyun Son and Heewon Kim and Seungjun Nah and Kyoung Mu Lee},
+      year={2017},
+      eprint={1707.02921},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/1707.02921}, 
 }
 ```
