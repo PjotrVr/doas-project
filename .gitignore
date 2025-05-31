@@ -1,9 +1,10 @@
 sources.txt
 data/
-data-augmented/
+data-augmented*/
 notes.txt
 todo.txt
 **/*.zip
 analysis/
 literature.txt
 runs
+latex
