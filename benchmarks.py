@@ -1,74 +1,66 @@
 import os
-from PIL import Image
+import json
 
-import torch
 import torch.nn.functional as F
-import torchvision.transforms as transforms
 from torchmetrics.functional import structural_similarity_index_measure as ssim_fn
 
-def psnr(pred, target, max_val=1.0):
-    mse = F.mse_loss(pred, target, reduction="mean")
-    return 20 * torch.log10(max_val / torch.sqrt(mse + 1e-10))
+from models.utils import calculate_psnr
+from experiments.EDSR.dataset import load_dataset
 
-def evaluate_interpolation(lr_paths, hr_paths, scale_factor=2, color_mode="RGB", mode="bicubic"):
-    assert len(lr_paths) == len(hr_paths)
-    to_tensor = transforms.ToTensor()
-    
+def evaluate_interpolation(dataset, scale_factor=2, color_mode="RGB", mode="bicubic"):
     total_mse = 0.0
     total_l1 = 0.0
     total_psnr = 0.0
     total_ssim = 0.0
 
-    for lr_path, hr_path in zip(lr_paths, hr_paths):
-        lr_img = Image.open(lr_path)
-        hr_img = Image.open(hr_path)
-
-        if color_mode == "Y":
-            lr_img = lr_img.convert("YCbCr").split()[0]
-            hr_img = hr_img.convert("YCbCr").split()[0]
-
-        lr_tensor = to_tensor(lr_img).unsqueeze(0)  # [1, C, H, W] or [1, 1, H, W]
-        hr_tensor = to_tensor(hr_img).unsqueeze(0)
-
-        _, _, h_lr, w_lr = lr_tensor.shape
-        new_h, new_w = h_lr * scale_factor, w_lr * scale_factor
+    for lr_img, hr_img in dataset:
+        if lr_img.dim() == 3:
+            lr_img = lr_img.unsqueeze(0)
+        if hr_img.dim() == 3:
+            hr_img = hr_img.unsqueeze(0)    
+        h, w = lr_img.shape[-2:]
+        new_h, new_w = h * scale_factor, w * scale_factor
 
         if mode in ["bilinear", "bicubic"]:
-            upsampled = F.interpolate(lr_tensor, size=(new_h, new_w), mode=mode, align_corners=False)
+            upsampled = F.interpolate(lr_img, size=(new_h, new_w), mode=mode, align_corners=False)
         else:
-            upsampled = F.interpolate(lr_tensor, size=(new_h, new_w), mode=mode)
-            
-        # upsampled = F.interpolate(lr_tensor, size=(new_h, new_w), mode=mode, align_corners=False).clamp(0, 1)
+            upsampled = F.interpolate(lr_img, size=(new_h, new_w), mode=mode)
+
         upsampled = upsampled.clamp(0, 1)
-        
-        mse = F.mse_loss(upsampled, hr_tensor, reduction="mean").item()
-        l1 = F.l1_loss(upsampled, hr_tensor, reduction="mean").item()
-        psnr_val = psnr(upsampled, hr_tensor).item()
-        ssim_val = ssim_fn(upsampled, hr_tensor).item()
+
+        mse = F.mse_loss(upsampled, hr_img, reduction="mean").item()
+        l1 = F.l1_loss(upsampled, hr_img, reduction="mean").item()
+        psnr_val = calculate_psnr(upsampled, hr_img, scale_factor=scale_factor).item()
+        ssim_val = ssim_fn(upsampled, hr_img).item()
 
         total_mse += mse
         total_l1 += l1
         total_psnr += psnr_val
         total_ssim += ssim_val
 
-    N = len(lr_paths)
+    n_samples = len(dataset)
     return {
-        "MSE": total_mse / N,
-        "L1": total_l1 / N,
-        "PSNR (dB)": total_psnr / N,
-        "SSIM": total_ssim / N
+        "MSE": total_mse / n_samples,
+        "L1": total_l1 / n_samples,
+        "PSNR (dB)": total_psnr / n_samples,
+        "SSIM": total_ssim / n_samples
     }
 
-for split in ["train", "valid"]:
-    hr_dir = f"./data/DIV2K_{split}_HR"
-    hr_paths = sorted([os.path.join(hr_dir, f) for f in os.listdir(hr_dir) if f.endswith(("png", "jpg"))])
-    for scale_factor in [2, 3, 4]:
-        lr_dir = f"./data/DIV2K_{split}_LR_bicubic/X{scale_factor}"
-        lr_paths = sorted([os.path.join(lr_dir, f) for f in os.listdir(lr_dir) if f.endswith(("png", "jpg"))])    
-        for mode in ["nearest", "bilinear", "bicubic"]:
-            for color_mode in ["RGB", "Y"]:
-                results = evaluate_interpolation(lr_paths, hr_paths, scale_factor=scale_factor, color_mode=color_mode, mode=mode)
-                print(f"{split=}, {mode=}, {scale_factor=}, {color_mode=}")
-                for k, v in results.items():
-                    print(f"{k}: {v:.4f}")
-                    
+if __name__ == "__main__":
+    all_results = {}
+
+    for dataset_name in ["DIV2K-val", "Urban100", "BSD100", "Set5", "Set14"]:    
+        all_results[dataset_name] = {}
+
+        for scale_factor in [2, 3, 4]:
+            key = f"{scale_factor}x"
+            all_results[dataset_name][key] = {}
+
+            dataset = load_dataset(root_dir=f"./data/{dataset_name}", scale_factor=scale_factor)
+
+            for interpolation in ["nearest", "bilinear", "bicubic"]:
+                results = evaluate_interpolation(dataset, scale_factor=scale_factor, mode=interpolation)
+                all_results[dataset_name][key][interpolation] = results
+
+    with open("results.json", "w") as f:
+        json.dump(all_results, f, indent=4)
