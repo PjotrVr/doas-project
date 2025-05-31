@@ -36,3 +36,6 @@ def calculate_psnr(sr, hr, scale_factor):
     hr_crop = hr[..., shave:-shave, shave:-shave]
     mse = F.mse_loss(sr_crop, hr_crop)
     return -10 * torch.log10(mse)
+
+def is_img_file(path):
+    return os.path.isfile(path) and path.lower().endswith((".png", ".jpg", ".jpeg"))
