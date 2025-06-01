@@ -86,17 +86,3 @@ python inference.py EDSR \
   --out output.png \
   --use_ensemble
 ```
-
-## Citation To Original Authors
-
-```
-@misc{lim2017enhanceddeepresidualnetworks,
-      title={Enhanced Deep Residual Networks for Single Image Super-Resolution}, 
-      author={Bee Lim and Sanghyun Son and Heewon Kim and Seungjun Nah and Kyoung Mu Lee},
-      year={2017},
-      eprint={1707.02921},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/1707.02921}, 
-}
-```
