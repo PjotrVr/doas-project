@@ -1,4 +1,3 @@
-import os
 import json
 
 import torch.nn.functional as F
@@ -7,7 +6,7 @@ from torchmetrics.functional import structural_similarity_index_measure as ssim_
 from models.utils import calculate_psnr
 from experiments.EDSR.dataset import load_dataset
 
-def evaluate_interpolation(dataset, scale_factor=2, color_mode="RGB", mode="bicubic"):
+def evaluate_interpolation(dataset, scale_factor=2, mode="bicubic"):
     total_mse = 0.0
     total_l1 = 0.0
     total_psnr = 0.0
@@ -17,7 +16,7 @@ def evaluate_interpolation(dataset, scale_factor=2, color_mode="RGB", mode="bicu
         if lr_img.dim() == 3:
             lr_img = lr_img.unsqueeze(0)
         if hr_img.dim() == 3:
-            hr_img = hr_img.unsqueeze(0)    
+            hr_img = hr_img.unsqueeze(0)
         h, w = lr_img.shape[-2:]
         new_h, new_w = h * scale_factor, w * scale_factor
 
@@ -48,19 +47,20 @@ def evaluate_interpolation(dataset, scale_factor=2, color_mode="RGB", mode="bicu
 
 if __name__ == "__main__":
     all_results = {}
+    for color_mode in ["RGB", "YCbCr"]:
+        all_results[color_mode] = {}
+        for dataset_name in ["Set5", "Set14", "BSD100", "Urban100", "DIV2K-val"]:    
+            all_results[color_mode][dataset_name] = {}
 
-    for dataset_name in ["DIV2K-val", "Urban100", "BSD100", "Set5", "Set14"]:    
-        all_results[dataset_name] = {}
+            for scale_factor in [2, 3, 4]:
+                key = f"{scale_factor}x"
+                all_results[color_mode][dataset_name][key] = {}
 
-        for scale_factor in [2, 3, 4]:
-            key = f"{scale_factor}x"
-            all_results[dataset_name][key] = {}
+                dataset = load_dataset(root_dir=f"./data/{dataset_name}", scale_factor=scale_factor, mode=color_mode)
 
-            dataset = load_dataset(root_dir=f"./data/{dataset_name}", scale_factor=scale_factor)
+                for interpolation in ["nearest", "bilinear", "bicubic"]:
+                    results = evaluate_interpolation(dataset, scale_factor=scale_factor, mode=interpolation)
+                    all_results[color_mode][dataset_name][key][interpolation] = results
 
-            for interpolation in ["nearest", "bilinear", "bicubic"]:
-                results = evaluate_interpolation(dataset, scale_factor=scale_factor, mode=interpolation)
-                all_results[dataset_name][key][interpolation] = results
-
-    with open("results.json", "w") as f:
+    with open("benchmarks.json", "w") as f:
         json.dump(all_results, f, indent=4)
