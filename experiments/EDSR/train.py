@@ -84,7 +84,7 @@ def train_one_epoch(model, criterion, optimizer, loader, device):
 
         total_loss += loss.item()
         total_psnr += calculate_psnr(sr_batch, hr_batch, model.scale_factor).item()
-        # total_ssim += ssim(sr_batch, hr_batch, data_range=1.0).item()
+        total_ssim += ssim(sr_batch, hr_batch, data_range=1.0).item()
         # total_samples += lr_batch.shape[0]
 
     avg_loss = total_loss / len(loader)
@@ -114,14 +114,13 @@ def evaluate(model, criterion, loader, device, ensemble=False):
             total_ssim += ssim(sr_img, hr_img, data_range=1.0).item()
             n_samples += 1
 
-    avg_loss = total_loss / n_samples#len(dataset)
-    avg_psnr = total_psnr / n_samples#len(dataset)
-    avg_ssim = total_ssim / n_samples#len(dataset)
+    avg_loss = total_loss / n_samples #len(dataset)
+    avg_psnr = total_psnr / n_samples #len(dataset)
+    avg_ssim = total_ssim / n_samples #len(dataset)
     model.train()
     return avg_loss, avg_psnr, avg_ssim
 
 def main():
-    # transform = PairedRandomTransform(hflip=True, rot=True)
     args = parse_args()
 
     train_dataset = load_dataset(args.train_dir, scale_factor=args.scale)
@@ -201,7 +200,6 @@ def main():
         print(f"\tTrain: Loss={train_loss:.4f}, PSNR={train_psnr:.3f}dB, SSIM={train_ssim:.5f}")
 
         if epoch % args.val_freq == 0 or (epoch + 1) == args.epochs:
-            # val_loss, val_psnr, val_ssim = evaluate(model, criterion, val_dataset, args.device)
             val_loss, val_psnr, val_ssim = evaluate(model, val_loader, val_dataset, args.device)
             scheduler.step(val_loss)
             history["val_loss"].append(val_loss)
