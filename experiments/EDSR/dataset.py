@@ -17,6 +17,7 @@ import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 
 from torchmetrics.functional.image.ssim import structural_similarity_index_measure as ssim
+from models.utils import is_img_file
 
 # class SRDataset(data.Dataset):
 #     def __init__(self, lr_paths, hr_paths, scale_factor, patch_size=None, transform=None, mode="rgb"):
@@ -93,8 +94,8 @@ def load_dataset(root_dir="./data", scale_factor=2, mode="rgb"):
     lr_dir = os.path.join(root_dir, f"X{scale_factor}/LR")
     hr_dir = os.path.join(root_dir, f"X{scale_factor}/HR")
     
-    lr_img_files = sorted([os.path.join(lr_dir, f) for f in os.listdir(lr_dir) if f.endswith((".png", ".jpg"))])
-    hr_img_files = sorted([os.path.join(hr_dir, f) for f in os.listdir(hr_dir) if f.endswith((".png", ".jpg"))])
+    lr_img_files = sorted([os.path.join(lr_dir, f) for f in os.listdir(lr_dir) if is_img_file(os.path.join(lr_dir, f))])
+    hr_img_files = sorted([os.path.join(hr_dir, f) for f in os.listdir(hr_dir) if is_img_file(os.path.join(hr_dir, f))])
     
     # Subset
     # lr_img_files = lr_img_files[:10]

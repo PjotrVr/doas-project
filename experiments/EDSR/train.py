@@ -25,16 +25,16 @@ from torchmetrics.functional.image.ssim import structural_similarity_index_measu
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
 
-from .dataset import load_dataset, PairedRandomTransform
+from .dataset import load_dataset
 from models.edsr import EDSR, save_model, load_model
-from models.utils import calculate_mean, calculate_psnr, seed_everything
+from models.utils import calculate_psnr, seed_everything
 from models.ensemble import forward_x8
 
 def parse_args():
     parser = argparse.ArgumentParser(description="EDSR Training")
 
     # Directories
-    parser.add_argument("--train_dir", type=str, default="./data/DIV2K-train", help="Path to train data directory")
+    parser.add_argument("--train_dir", type=str, default="./data-augmented/DIV2K-train", help="Path to train data directory")
     parser.add_argument("--val_dir", type=str, default="./data/DIV2K-val", help="Path to validation data directory")
     parser.add_argument("--run_dir", type=str, default="runs", help="Directory to save logs/models")
     
@@ -84,7 +84,7 @@ def train_one_epoch(model, criterion, optimizer, loader, device):
 
         total_loss += loss.item()
         total_psnr += calculate_psnr(sr_batch, hr_batch, model.scale_factor).item()
-        total_ssim += ssim(sr_batch, hr_batch, data_range=1.0).item()
+        # total_ssim += ssim(sr_batch, hr_batch, data_range=1.0).item()
         # total_samples += lr_batch.shape[0]
 
     avg_loss = total_loss / len(loader)
@@ -92,14 +92,14 @@ def train_one_epoch(model, criterion, optimizer, loader, device):
     avg_ssim = total_ssim / len(loader)
     return avg_loss, avg_psnr, avg_ssim
 
-def evaluate(model, criterion, dataset, device, ensemble=False):
+def evaluate(model, criterion, loader, device, ensemble=False):
     model.eval()
     total_loss, total_psnr, total_ssim = 0.0, 0.0, 0.0
+    n_samples = 0
     with torch.no_grad():
-        for i in range(len(dataset)):
-            lr_img, hr_img = dataset[i]
-            lr_img = lr_img.unsqueeze(0).to(device)  # Add batch dim
-            hr_img = hr_img.unsqueeze(0).to(device)
+        for lr_img, hr_img in loader:
+            lr_img = lr_img.to(device)
+            hr_img = hr_img.to(device)
 
             if ensemble:
                 sr_img = forward_x8(model, lr_img)
@@ -112,10 +112,11 @@ def evaluate(model, criterion, dataset, device, ensemble=False):
             total_loss += loss.item()
             total_psnr += calculate_psnr(sr_img, hr_img, model.scale_factor).item()
             total_ssim += ssim(sr_img, hr_img, data_range=1.0).item()
+            n_samples += 1
 
-    avg_loss = total_loss / len(dataset)
-    avg_psnr = total_psnr / len(dataset)
-    avg_ssim = total_ssim / len(dataset)
+    avg_loss = total_loss / n_samples#len(dataset)
+    avg_psnr = total_psnr / n_samples#len(dataset)
+    avg_ssim = total_ssim / n_samples#len(dataset)
     model.train()
     return avg_loss, avg_psnr, avg_ssim
 
@@ -125,8 +126,10 @@ def main():
 
     train_dataset = load_dataset(args.train_dir, scale_factor=args.scale)
     val_dataset = load_dataset(args.val_dir, scale_factor=args.scale)
+    print(len(train_dataset), len(val_dataset))
+    
     train_loader = data.DataLoader(train_dataset, batch_size=args.batch, shuffle=True)
-    # val_loader = data.DataLoader(val_dataset, batch_size=args.batch, shuffle=False)
+    val_loader = data.DataLoader(val_dataset, batch_size=1, shuffle=False)
     
     seed_everything(args.seed)
     model = EDSR(
@@ -154,16 +157,15 @@ def main():
     checkpoints_dir = os.path.join(run_dir, "checkpoints")
     plots_dir = os.path.join(run_dir, "plots")
     
+    os.makedirs(run_dir, exist_ok=True)
     os.makedirs(checkpoints_dir, exist_ok=True)
     os.makedirs(plots_dir, exist_ok=True)
-    os.makedirs(run_dir, exist_ok=True)
 
     with open(os.path.join(run_dir, "config.json"), "w") as f:
         json.dump(vars(args), f, indent=4)
 
     n_learnable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     n_frozen_params = sum(p.numel() for p in model.parameters() if not p.requires_grad)
-    
     print("Number of parameters:")
     print(f"\tLearnable: {n_learnable_params:,}" )
     print(f"\tFrozen: {n_frozen_params:,}" )
@@ -199,7 +201,8 @@ def main():
         print(f"\tTrain: Loss={train_loss:.4f}, PSNR={train_psnr:.3f}dB, SSIM={train_ssim:.5f}")
 
         if epoch % args.val_freq == 0 or (epoch + 1) == args.epochs:
-            val_loss, val_psnr, val_ssim = evaluate(model, criterion, val_dataset, args.device)
+            # val_loss, val_psnr, val_ssim = evaluate(model, criterion, val_dataset, args.device)
+            val_loss, val_psnr, val_ssim = evaluate(model, val_loader, val_dataset, args.device)
             scheduler.step(val_loss)
             history["val_loss"].append(val_loss)
             history["val_psnr"].append(val_psnr)

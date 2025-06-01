@@ -52,7 +52,7 @@ def main():
         n_blocks=config["n_blocks"],
         n_features=config["n_features"],
         scale_factor=config["scale"],
-        activation=config["activation"],
+        activation=config["act"],
         res_scale=config["res_scale"],
     ).to(args.device)
 
